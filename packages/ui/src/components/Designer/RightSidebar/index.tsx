@@ -60,7 +60,16 @@ const Sidebar = (props: SidebarProps) => {
         }}
       >
         {getActiveSchemas().length === 0 ? (
-          <ListView {...props} />
+          <ListView
+            schemas={props.schemas}
+            onSortEnd={props.onSortEnd}
+            onEdit={props.onEdit}
+            hoveringSchemaId={props.hoveringSchemaId}
+            onChangeHoveringSchemaId={props.onChangeHoveringSchemaId}
+            changeSchemas={props.changeSchemas}
+            basePdf={props.basePdf}
+            onChangeBasePdf={props.onChangeBasePdf}
+          />
         ) : (
           <DetailView {...props} activeSchema={getLastActiveSchema()} />
         )}

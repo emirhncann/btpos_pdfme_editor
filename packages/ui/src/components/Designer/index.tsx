@@ -15,6 +15,7 @@ import {
   ChangeSchemas,
   DesignerProps,
   Size,
+  BasePdf,
   isBlankPdf,
   px2mm,
 } from '@pdfme/common';
@@ -89,6 +90,7 @@ const TemplateEditor = ({
   const [activeElements, setActiveElements] = useState<HTMLElement[]>([]);
   const [schemasList, setSchemasList] = useState<SchemaForUI[][]>([[]] as SchemaForUI[][]);
   const [pageCursor, setPageCursor] = useState(0);
+  const [localBasePdf, setLocalBasePdf] = useState<BasePdf>(template.basePdf);
   const [zoomLevel, setZoomLevel] = useState(options.zoomLevel ?? 1);
   const [sidebarOpen, setSidebarOpen] = useState(options.sidebarOpen ?? true);
   const [canvasHeight, setCanvasHeight] = useState(0);
@@ -190,6 +192,43 @@ const TemplateEditor = ({
     }
   }, [options.sidebarOpen]);
 
+  // Ctrl+Tekerlek ve Ctrl+=/- ile zoom
+  useEffect(() => {
+    const zoomStep = 0.25;
+    const minZoom = 0.25;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      setZoomLevel((prev) => {
+        const next = e.deltaY < 0 ? prev + zoomStep : prev - zoomStep;
+        return Math.min(Math.max(minZoom, next), maxZoom);
+      });
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!e.ctrlKey) return;
+      if (e.key === '=' || e.key === '+') {
+        e.preventDefault();
+        setZoomLevel((prev) => Math.min(prev + zoomStep, maxZoom));
+      } else if (e.key === '-') {
+        e.preventDefault();
+        setZoomLevel((prev) => Math.max(prev - zoomStep, minZoom));
+      } else if (e.key === '0') {
+        e.preventDefault();
+        setZoomLevel(1);
+      }
+    };
+
+    const canvasEl = canvasRef.current;
+    canvasEl?.addEventListener('wheel', handleWheel, { passive: false });
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      canvasEl?.removeEventListener('wheel', handleWheel);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [maxZoom]);
+
   useScrollPageCursor({
     ref: canvasRef,
     pageSizes,
@@ -267,6 +306,16 @@ const TemplateEditor = ({
     onEditEnd,
   });
 
+  const onChangeBasePdf = useCallback(
+    (newBasePdf: BasePdf) => {
+      setLocalBasePdf(newBasePdf);
+      const newTemplate = schemasList2template(schemasList, newBasePdf);
+      onChangeTemplate(newTemplate);
+      void refresh(newTemplate);
+    },
+    [schemasList, onChangeTemplate, refresh],
+  );
+
   const updateTemplate = useCallback(
     async (newTemplate: Template, preservePage = false) => {
       const sl = await template2SchemasList(newTemplate);
@@ -294,9 +343,6 @@ const TemplateEditor = ({
   );
 
   const addSchema = (defaultSchema: Schema) => {
-    const [paddingTop, paddingRight, paddingBottom, paddingLeft] = isBlankPdf(template.basePdf)
-      ? template.basePdf.padding
-      : [0, 0, 0, 0];
     const pageSize = pageSizes[pageCursor];
 
     const newSchemaName = (prefix: string) => {
@@ -308,7 +354,7 @@ const TemplateEditor = ({
       }
       return newName;
     };
-    const ensureMiddleValue = (min: number, value: number, max: number) =>
+    const clamp = (min: number, value: number, max: number) =>
       Math.min(Math.max(min, value), max);
 
     const s = {
@@ -316,16 +362,8 @@ const TemplateEditor = ({
       ...defaultSchema,
       name: newSchemaName(i18n('field')),
       position: {
-        x: ensureMiddleValue(
-          paddingLeft,
-          defaultSchema.position.x,
-          pageSize.width - paddingRight - defaultSchema.width,
-        ),
-        y: ensureMiddleValue(
-          paddingTop,
-          defaultSchema.position.y,
-          pageSize.height - paddingBottom - defaultSchema.height,
-        ),
+        x: clamp(0, defaultSchema.position.x, pageSize.width - defaultSchema.width),
+        y: clamp(0, defaultSchema.position.y, pageSize.height - defaultSchema.height),
       },
       required: defaultSchema.readOnly
         ? false
@@ -335,7 +373,7 @@ const TemplateEditor = ({
     if (defaultSchema.position.y === 0) {
       const paper = paperRefs.current[pageCursor];
       const rectTop = paper ? paper.getBoundingClientRect().top : 0;
-      s.position.y = rectTop > 0 ? paddingTop : pageSizes[pageCursor].height / 2;
+      s.position.y = rectTop > 0 ? 0 : pageSizes[pageCursor].height / 2;
     }
 
     commitSchemas(schemasList[pageCursor].concat(s));
@@ -385,6 +423,7 @@ const TemplateEditor = ({
 
   if (prevTemplate !== template) {
     setPrevTemplate(template);
+    setLocalBasePdf(template.basePdf);
     void updateTemplate(template, true);
   }
 
@@ -398,7 +437,7 @@ const TemplateEditor = ({
     // Pass the error directly to ErrorScreen
     return <ErrorScreen size={size} error={error} />;
   }
-  const pageManipulation = isBlankPdf(template.basePdf)
+  const pageManipulation = isBlankPdf(localBasePdf)
     ? { addPageAfter: handleAddPageAfter, removePage: handleRemovePage }
     : {};
 
@@ -462,7 +501,8 @@ const TemplateEditor = ({
             height={canvasHeight}
             size={size}
             pageSize={pageSizes[pageCursor] ?? []}
-            basePdf={template.basePdf}
+            basePdf={localBasePdf}
+            onChangeBasePdf={onChangeBasePdf}
             activeElements={activeElements}
             schemasList={schemasList}
             schemas={schemasList[pageCursor] ?? []}

@@ -85,16 +85,7 @@ export const downloadJsonFile = (json: unknown, title: string) => {
 
 export const translations: { label: string; value: string }[] = [
   { value: 'en', label: 'English' },
-  { value: 'zh', label: 'Chinese' },
-  { value: 'ko', label: 'Korean' },
-  { value: 'ja', label: 'Japanese' },
-  { value: 'ar', label: 'Arabic' },
-  { value: 'th', label: 'Thai' },
-  { value: 'pl', label: 'Polish' },
-  { value: 'it', label: 'Italian' },
-  { value: 'de', label: 'German' },
-  { value: 'fr', label: 'French' },
-  { value: 'es', label: 'Spanish' },
+  { value: 'tr', label: 'Türkçe' },
 ];
 
 export const generatePDF = async (
@@ -146,7 +137,7 @@ export const getBlankTemplate = () =>
     schemas: [{}],
     basePdf: {
       ...PAGE_SIZE_PRESETS.A4,
-      padding: [20, 10, 20, 10],
+      padding: [0, 0, 0, 0],
     },
   }) as Template;
 

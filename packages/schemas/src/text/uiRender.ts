@@ -151,17 +151,35 @@ export const uiRender = async (arg: UIRenderProps<TextSchema>) => {
       return;
     }
 
-    // Read-only mode
-    textBlock.innerHTML = processedText
-      .split('')
-      .map((l, i) => {
-        const escaped = l
+    // Pre-split text using fontkit (same algorithm as PDF renderer) so the designer
+    // shows exactly the same line breaks as the generated PDF/print output.
+    const lineRange = getTextLineRange(schema);
+    let displayText: string;
+    if (lineRange) {
+      // Line range already applied via processedText; use it as-is
+      displayText = processedText;
+    } else {
+      const cleanValue = replaceUnsupportedChars(value, fontKitFont);
+      const splitLines = splitTextToSize({
+        value: cleanValue,
+        characterSpacing: schema.characterSpacing ?? DEFAULT_CHARACTER_SPACING,
+        fontSize: schema.fontSize ?? DEFAULT_FONT_SIZE,
+        fontKitFont,
+        boxWidthInPt: mm2pt(getBoxContentArea(schema).width),
+      });
+      displayText = splitLines.map((l) => l.trimEnd()).join('\n');
+    }
+
+    textBlock.innerHTML = Array.from(displayText)
+      .map((char, i) => {
+        if (char === '\n') return '<br>';
+        const escaped = char
           .replace(/&/g, '&amp;')
           .replace(/</g, '&lt;')
           .replace(/>/g, '&gt;')
           .replace(/"/g, '&quot;');
         return `<span style="letter-spacing:${
-          String(value).length === i + 1 ? 0 : 'inherit'
+          i + 1 === displayText.length ? 0 : 'inherit'
         };">${escaped}</span>`;
       })
       .join('');
@@ -429,8 +447,9 @@ export const buildStyledTextContainer = (
     letterSpacing: `${characterSpacing}pt`,
     lineHeight: `${schema.lineHeight ?? DEFAULT_LINE_HEIGHT}em`,
     textAlign: schema.alignment ?? DEFAULT_ALIGNMENT,
-    whiteSpace: 'pre-wrap',
-    wordBreak: 'break-word',
+    // Editable mode needs CSS wrapping; viewer uses fontkit pre-split so CSS wrapping is disabled
+    whiteSpace: editable ? 'pre-wrap' : 'pre',
+    wordBreak: editable ? 'break-word' : 'normal',
     // Block layout styles
     resize: 'none',
     border: 'none',

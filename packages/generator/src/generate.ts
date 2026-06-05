@@ -133,7 +133,7 @@ const generate = async (props: GenerateProps): Promise<Uint8Array<ArrayBuffer>> 
     const input = inputs[i];
     resetInternalLinkAnnotations(_cache);
 
-    const dynamicTemplate: Template = shouldApplyDynamicTemplate
+    let dynamicTemplate: Template = shouldApplyDynamicTemplate
       ? await getDynamicTemplate({
           template,
           input,
@@ -142,6 +142,25 @@ const generate = async (props: GenerateProps): Promise<Uint8Array<ArrayBuffer>> 
           getDynamicHeights: getDynamicLayoutForSchema,
         })
       : template;
+
+    // Termal fiş gibi dinamik yükseklikli çıktılar için:
+    // getDynamicTemplate sonrası gerçek içerik yüksekliğini hesapla,
+    // basePdf.height'ı buna göre ayarla → sayfa tam içerik kadar yüksek olur.
+    if (options.dynamicHeight && isBlankPdf(dynamicTemplate.basePdf)) {
+      const allElements = [
+        ...dynamicTemplate.schemas.flat(),
+        ...(dynamicTemplate.basePdf.staticSchema ?? []),
+      ];
+      if (allElements.length > 0) {
+        const contentBottom = Math.max(...allElements.map((s) => s.position.y + s.height));
+        const bottomPad = dynamicTemplate.basePdf.padding?.[2] ?? 0;
+        dynamicTemplate = {
+          ...dynamicTemplate,
+          basePdf: { ...dynamicTemplate.basePdf, height: contentBottom + bottomPad },
+        };
+      }
+    }
+
     const { basePages, embedPdfBoxes } =
       cachedEmbedPdfPages ??
       (await getEmbedPdfPages({

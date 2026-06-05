@@ -16,12 +16,15 @@ import {
   select,
   checkbox,
   radioGroup,
+  spacer,
 } from '@pdfme/schemas';
+import productList from './productList';
 
 export const getPlugins = () => {
   return {
     Text: text,
     'Multi-Variable Text': multiVariableText,
+    'Ürün Listesi': productList,
     Table: table,
     List: list,
     Line: line,
@@ -37,6 +40,7 @@ export const getPlugins = () => {
     Select: select,
     Checkbox: checkbox,
     RadioGroup: radioGroup,
+    'Boşluk (ESC/POS)': spacer,
     // JAPANPOST: barcodes.japanpost,
     EAN13: barcodes.ean13,
     // EAN8: barcodes.ean8,

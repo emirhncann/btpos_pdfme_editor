@@ -169,12 +169,7 @@ const DetailView = (props: DetailViewProps) => {
   const validateUniqueSchemaName = (_: unknown, value: string): boolean =>
     uniqueSchemaName.current(value);
 
-  // Calculate padding values once
-  const [paddingTop, paddingRight, paddingBottom, paddingLeft] = isBlankPdf(basePdf)
-    ? basePdf.padding
-    : [0, 0, 0, 0];
-
-  // Cross-field validation: only checks when both fields are individually valid
+  // Cross-field validation: checks that element fits within page boundaries
   const validatePosition = (_: unknown, value: number, fieldName: string): boolean => {
     const formValues = form.getValues() as Record<string, unknown>;
     const position = formValues.position as { x: number; y: number } | undefined;
@@ -184,17 +179,13 @@ const DetailView = (props: DetailViewProps) => {
     if (!position || width === undefined || height === undefined) return true;
 
     if (fieldName === 'x') {
-      if (value < paddingLeft || value > pageSize.width - paddingRight) return true;
-      if (width > 0 && value + width > pageSize.width - paddingRight) return false;
+      if (width > 0 && value + width > pageSize.width) return false;
     } else if (fieldName === 'y') {
-      if (value < paddingTop || value > pageSize.height - paddingBottom) return true;
-      if (height > 0 && value + height > pageSize.height - paddingBottom) return false;
+      if (height > 0 && value + height > pageSize.height) return false;
     } else if (fieldName === 'width') {
-      if (position.x < paddingLeft || position.x > pageSize.width - paddingRight) return true;
-      if (value > 0 && position.x + value > pageSize.width - paddingRight) return false;
+      if (value > 0 && position.x + value > pageSize.width) return false;
     } else if (fieldName === 'height') {
-      if (position.y < paddingTop || position.y > pageSize.height - paddingBottom) return true;
-      if (value > 0 && position.y + value > pageSize.height - paddingBottom) return false;
+      if (value > 0 && position.y + value > pageSize.height) return false;
     }
 
     return true;
@@ -305,9 +296,8 @@ const DetailView = (props: DetailViewProps) => {
       })()
     : emptySchema;
 
-  // Calculate max values considering padding
-  const maxWidth = pageSize.width - paddingLeft - paddingRight;
-  const maxHeight = pageSize.height - paddingTop - paddingBottom;
+  const maxWidth = pageSize.width;
+  const maxHeight = pageSize.height;
 
   // Create a type-safe schema object
   const propPanelSchema: PropPanelSchema = {
@@ -359,8 +349,8 @@ const DetailView = (props: DetailViewProps) => {
             widget: 'inputNumber',
             required: true,
             span: 8,
-            min: paddingLeft,
-            max: pageSize.width - paddingRight,
+            min: 0,
+            max: pageSize.width,
             rules: [
               {
                 validator: (_: unknown, value: number) => validatePosition(_, value, 'x'),
@@ -374,8 +364,8 @@ const DetailView = (props: DetailViewProps) => {
             widget: 'inputNumber',
             required: true,
             span: 8,
-            min: paddingTop,
-            max: pageSize.height - paddingBottom,
+            min: 0,
+            max: pageSize.height,
             rules: [
               {
                 validator: (_: unknown, value: number) => validatePosition(_, value, 'y'),

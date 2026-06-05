@@ -7,6 +7,7 @@ export type SidebarProps = {
   size: Size;
   pageSize: Size;
   basePdf: BasePdf;
+  onChangeBasePdf: (basePdf: BasePdf) => void;
   activeElements: HTMLElement[];
   schemas: SchemaForUI[];
   schemasList: SchemaForUI[][];

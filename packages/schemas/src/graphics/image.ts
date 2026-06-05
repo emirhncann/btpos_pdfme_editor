@@ -12,7 +12,6 @@ import {
   createSvgStr,
 } from '../utils.js';
 import { DEFAULT_OPACITY } from '../constants.js';
-import { getImageDimension } from './imagehelper.js';
 
 /**
  * Build a short fingerprint for a potentially-large base64 image string.
@@ -52,15 +51,21 @@ const imageSchema: Plugin<ImageSchema> = {
     const inputImageCacheKey = getCacheKey(schema, value);
     let image = _cache.get(inputImageCacheKey) as PDFImage;
     if (!image) {
-      const isPng = value.startsWith('data:image/png;');
-      image = await (isPng ? pdfDoc.embedPng(value) : pdfDoc.embedJpg(value));
+      if (value.startsWith('http://') || value.startsWith('https://')) {
+        const res = await fetch(value);
+        const buf = await res.arrayBuffer();
+        const ct = res.headers.get('content-type') ?? '';
+        image = await (ct.includes('png') ? pdfDoc.embedPng(buf) : pdfDoc.embedJpg(buf));
+      } else {
+        const isPng = value.startsWith('data:image/png;');
+        image = await (isPng ? pdfDoc.embedPng(value) : pdfDoc.embedJpg(value));
+      }
       _cache.set(inputImageCacheKey, image);
     }
 
     const _schema = { ...schema, position: { ...schema.position } };
-    const dimension = getImageDimension(value);
-    const imageWidth = px2mm(dimension.width);
-    const imageHeight = px2mm(dimension.height);
+    const imageWidth = px2mm(image.width);
+    const imageHeight = px2mm(image.height);
     const boxWidth = _schema.width;
     const boxHeight = _schema.height;
 
@@ -158,49 +163,141 @@ const imageSchema: Plugin<ImageSchema> = {
       container.appendChild(button);
     }
 
-    // file input
+    // file + url input (empty state)
     if ((!value || isDefault) && editable) {
-      const label = document.createElement('label');
-      const labelStyle: CSS.Properties = {
-        ...fullSize,
-        display: editable ? 'flex' : 'none',
+      const overlay = document.createElement('div');
+      Object.assign(overlay.style, {
         position: 'absolute',
-        top: 0,
-        backgroundColor: editable || value ? addAlphaToHex(theme.colorPrimaryBg, 30) : 'none',
-        cursor: 'pointer',
-      };
-      Object.assign(label.style, labelStyle);
-      container.appendChild(label);
-      const input = document.createElement('input');
-      const inputStyle: CSS.Properties = {
-        ...fullSize,
-        position: 'absolute',
-        top: '50%',
-        left: '50%',
-        width: '180px',
-        height: '30px',
-        marginLeft: '-90px',
-        marginTop: '-15px',
-      };
-      Object.assign(input.style, inputStyle);
-      input.tabIndex = tabIndex || 0;
-      input.type = 'file';
-      input.accept = 'image/jpeg, image/png';
-      input.addEventListener('change', (event: Event) => {
+        top: '0',
+        left: '0',
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '5px',
+        backgroundColor: addAlphaToHex(theme.colorPrimaryBg, 30),
+        padding: '6px',
+        boxSizing: 'border-box',
+      } as CSS.Properties);
+      overlay.addEventListener('click', (e) => e.stopPropagation());
+      container.appendChild(overlay);
+
+      // hidden file input
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = 'image/jpeg, image/png';
+      fileInput.tabIndex = tabIndex || 0;
+      fileInput.style.display = 'none';
+      fileInput.addEventListener('change', (event: Event) => {
         const target = event.target;
         const files = target instanceof HTMLInputElement ? target.files : null;
         readFile(files)
           .then((result) => {
             if (onChange) onChange({ key: 'content', value: result as string });
           })
-          .catch((error) => {
-            console.error('Error reading file:', error);
+          .catch((error) => console.error('Error reading file:', error));
+      });
+      fileInput.addEventListener('blur', () => { if (stopEditing) stopEditing(); });
+      overlay.appendChild(fileInput);
+
+      // file label button
+      const fileLabel = document.createElement('label');
+      fileLabel.textContent = '📁 Dosya Seç';
+      Object.assign(fileLabel.style, {
+        cursor: 'pointer',
+        padding: '3px 10px',
+        borderRadius: '4px',
+        border: '1px solid #d9d9d9',
+        background: '#fff',
+        fontSize: '11px',
+        whiteSpace: 'nowrap',
+        color: '#333',
+      } as CSS.Properties);
+      fileLabel.appendChild(fileInput);
+      overlay.appendChild(fileLabel);
+
+      // divider
+      const divider = document.createElement('span');
+      divider.textContent = '— veya URL —';
+      Object.assign(divider.style, {
+        fontSize: '10px',
+        color: '#888',
+        whiteSpace: 'nowrap',
+      } as CSS.Properties);
+      overlay.appendChild(divider);
+
+      // url row
+      const urlRow = document.createElement('div');
+      Object.assign(urlRow.style, {
+        display: 'flex',
+        gap: '3px',
+        width: '95%',
+      } as CSS.Properties);
+
+      const urlInput = document.createElement('input');
+      urlInput.type = 'text';
+      urlInput.placeholder = 'https://...';
+      Object.assign(urlInput.style, {
+        flex: '1',
+        minWidth: '0',
+        fontSize: '10px',
+        padding: '2px 4px',
+        border: '1px solid #d9d9d9',
+        borderRadius: '4px',
+        outline: 'none',
+        background: '#fff',
+        color: '#333',
+      } as CSS.Properties);
+      urlInput.addEventListener('click', (e) => e.stopPropagation());
+
+      const fetchBtn = document.createElement('button');
+      fetchBtn.textContent = '↓';
+      fetchBtn.title = 'Base64 olarak yükle';
+      Object.assign(fetchBtn.style, {
+        cursor: 'pointer',
+        padding: '2px 7px',
+        border: '1px solid #d9d9d9',
+        borderRadius: '4px',
+        background: '#fff',
+        fontSize: '12px',
+        flexShrink: '0',
+        color: '#333',
+      } as CSS.Properties);
+
+      const doFetch = () => {
+        const url = urlInput.value.trim();
+        if (!url) return;
+        fetchBtn.disabled = true;
+        fetchBtn.textContent = '…';
+        fetch(url)
+          .then((res) => res.blob())
+          .then(
+            (blob) =>
+              new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+              }),
+          )
+          .then((dataUrl) => {
+            if (onChange) onChange({ key: 'content', value: dataUrl });
+          })
+          .catch(() => {
+            fetchBtn.disabled = false;
+            fetchBtn.textContent = '↓';
+            alert('Resim yüklenemedi. URL herkese açık olmalı (CORS).');
           });
-      });
-      input.addEventListener('blur', () => {
-        if (stopEditing) stopEditing();
-      });
-      label.appendChild(input);
+      };
+
+      fetchBtn.addEventListener('click', (e) => { e.stopPropagation(); doFetch(); });
+      urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doFetch(); });
+
+      urlRow.appendChild(urlInput);
+      urlRow.appendChild(fetchBtn);
+      overlay.appendChild(urlRow);
     }
   },
   propPanel: {

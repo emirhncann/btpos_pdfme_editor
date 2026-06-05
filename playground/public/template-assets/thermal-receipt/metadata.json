@@ -1,0 +1,7 @@
+{
+  "title": "Termal Fiş",
+  "description": "Dinamik ürün listeli 80mm termal fiş. Ürün sayısı değiştikçe toplam/footer otomatik kayar.",
+  "sourceKind": "designer",
+  "tags": ["Receipt", "Thermal", "POS", "Dynamic"],
+  "order": 5
+}

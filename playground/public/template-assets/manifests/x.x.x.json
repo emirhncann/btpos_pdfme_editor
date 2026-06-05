@@ -1,7 +1,33 @@
 {
   "schemaVersion": 1,
-  "cliVersion": "6.1.2",
+  "cliVersion": "x.x.x",
   "templates": [
+    {
+      "name": "thermal-receipt",
+      "author": "pdfme",
+      "path": "thermal-receipt/template.json",
+      "thumbnailPath": "thermal-receipt/thumbnail.png",
+      "pageCount": 1,
+      "fieldCount": 14,
+      "schemaTypes": [
+        "line",
+        "table",
+        "text"
+      ],
+      "fontNames": [],
+      "hasCJK": false,
+      "basePdfKind": "blank",
+      "description": "Dinamik ürün listeli 80mm termal fiş. Ürün sayısı değiştikçe toplam/footer otomatik kayar.",
+      "order": 5,
+      "sourceKind": "designer",
+      "tags": [
+        "Receipt",
+        "Thermal",
+        "POS",
+        "Dynamic"
+      ],
+      "title": "Termal Fiş"
+    },
     {
       "name": "invoice",
       "author": "hand-dot",

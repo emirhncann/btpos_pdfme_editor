@@ -175,29 +175,17 @@ const Canvas = (props: Props, ref: Ref<HTMLDivElement>) => {
     const actualTop = top / ZOOM;
     const actualLeft = left / ZOOM;
     const { width: pageWidth, height: pageHeight } = pageSizes[pageCursor];
-    let topPadding = 0;
-    let rightPadding = 0;
-    let bottomPadding = 0;
-    let leftPadding = 0;
 
-    if (isBlankPdf(basePdf)) {
-      const [t, r, b, l] = basePdf.padding;
-      topPadding = t * ZOOM;
-      rightPadding = r;
-      bottomPadding = b;
-      leftPadding = l * ZOOM;
+    if (actualTop + targetHeight > pageHeight) {
+      target.style.top = `${(pageHeight - targetHeight) * ZOOM}px`;
+    } else {
+      target.style.top = `${top < 0 ? 0 : top}px`;
     }
 
-    if (actualTop + targetHeight > pageHeight - bottomPadding) {
-      target.style.top = `${(pageHeight - targetHeight - bottomPadding) * ZOOM}px`;
+    if (actualLeft + targetWidth > pageWidth) {
+      target.style.left = `${(pageWidth - targetWidth) * ZOOM}px`;
     } else {
-      target.style.top = `${top < topPadding ? topPadding : top}px`;
-    }
-
-    if (actualLeft + targetWidth > pageWidth - rightPadding) {
-      target.style.left = `${(pageWidth - targetWidth - rightPadding) * ZOOM}px`;
-    } else {
-      target.style.left = `${left < leftPadding ? leftPadding : left}px`;
+      target.style.left = `${left < 0 ? 0 : left}px`;
     }
   };
 

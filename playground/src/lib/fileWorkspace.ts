@@ -325,7 +325,7 @@ export const serializeTemplateForFileWorkspace = (template: Template) =>
 export const getBlankFileWorkspaceTemplate = (): Template => ({
   basePdf: {
     ...PAGE_SIZE_PRESETS.A4,
-    padding: [20, 10, 20, 10],
+    padding: [0, 0, 0, 0],
   },
   schemas: [[]],
 });

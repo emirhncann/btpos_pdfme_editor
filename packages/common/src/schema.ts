@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const langs = ['en', 'zh', 'ja', 'ko', 'ar', 'th', 'pl', 'it', 'de', 'es', 'fr'] as const;
+const langs = ['en', 'tr'] as const;
 
 export const Lang = z.enum(langs);
 export const Dict = z.object({
@@ -117,6 +117,7 @@ export const Dict = z.object({
   'schemas.list.removeItem': z.string(),
   'schemas.list.indentItem': z.string(),
   'schemas.list.outdentItem': z.string(),
+  paperSize: z.string(),
 });
 export const Mode = z.enum(['viewer', 'form', 'designer']);
 
@@ -223,6 +224,7 @@ export const GeneratorOptions = CommonOptions.extend({
   producer: z.string().optional(),
   subject: z.string().optional(),
   title: z.string().optional(),
+  dynamicHeight: z.boolean().optional(),
 });
 
 export const GenerateProps = CommonProps.extend({
